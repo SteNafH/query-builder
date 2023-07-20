@@ -1,0 +1,32 @@
+{
+  "name": "query-builder",
+  "version": "1.0.0",
+  "description": "A parameter based query builder for MySQL",
+  "main": "lib/src/index.js",
+  "types": "lib/src/index.d.ts",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SteNafH/query-builder.git"
+  },
+  "keywords": [
+    "MySQL",
+    "Query Builder",
+    "TypeScript",
+    "NodeJs"
+  ],
+  "author": "Stefan Hilhorst",
+  "bugs": {
+    "url": "https://github.com/SteNafH/query-builder/issues"
+  },
+  "homepage": "https://github.com/SteNafH/query-builder#readme",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "prepare": "yarn build",
+    "prepublishOnly": "yarn test"
+  },
+  "devDependencies": {
+    "typescript": "^5.1.6"
+  }
+}
