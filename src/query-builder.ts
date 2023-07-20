@@ -8,14 +8,26 @@ type Value = string | number | boolean | null | Query;
 
 type ConditionValue = Value | (string | number | boolean | Query)[];
 
-type ConditionOperator = '=' | '!=' | '>' | '<' | '>=' | '<=' | 'BETWEEN' | 'NOT BETWEEN' | 'LIKE' | 'NOT LIKE' | 'IN' | 'NOT IN';
+type ConditionOperator =
+    '='
+    | '!='
+    | '>'
+    | '<'
+    | '>='
+    | '<='
+    | 'BETWEEN'
+    | 'NOT BETWEEN'
+    | 'LIKE'
+    | 'NOT LIKE'
+    | 'IN'
+    | 'NOT IN';
 
 interface Condition {
     value: ConditionValue;
     operator?: ConditionOperator | ConditionOperator[];
 }
 
-type ConditionsOperator =  'AND' | 'OR';
+type ConditionsOperator = 'AND' | 'OR';
 
 interface Conditions {
     conditions: Record<string, ConditionValue | Condition | (ConditionValue | Condition)[]>;
@@ -38,7 +50,7 @@ interface BaseQuery {
 }
 
 interface SelectQuery extends BaseQuery {
-    select: string | [string, string] | (string | [string, string])[] | Record<string, true | string | Query>;
+    select: string | string[] | Record<string, true | string | Query>;
     distinct?: boolean;
     from: string | [string, string];
     innerJoin?: Join;
@@ -115,8 +127,80 @@ class Query {
             throw new InvalidQueryException('Query Type Not Found');
     }
 
-    private handleSelect(query: SelectQuery): void {
+    private handleOrderBy(orderBy: string | OrderBy | (string | OrderBy)[]): string {
+        if (typeof orderBy === 'string')
+            return orderBy;
 
+        if (!Array.isArray(orderBy))
+            return `${orderBy.by} ${orderBy.order}`;
+
+        return orderBy.map(orderBy => this.handleOrderBy(orderBy)).join(', ');
+    }
+
+    private handleSelect(query: SelectQuery): void {
+        const sql: string[] = [];
+        const values: (any | any[])[] = [];
+
+        if (query.explain)
+            sql.push('EXPLAIN');
+
+        sql.push('SELECT');
+
+        if (query.distinct)
+            sql.push('DISTINCT');
+
+        if (typeof query.select === 'string')
+            sql.push(query.select);
+        else if (Array.isArray(query.select))
+            sql.push(query.select.join(', '));
+        else {
+            const columns: string[] = [];
+            for (const column in query.select) {
+                const value = query.select[column];
+
+                if (value === true)
+                    columns.push(column);
+                else if (typeof value === 'string')
+                    columns.push(`${value} AS ${column}`);
+                else {
+                    columns.push(`(${value.sql})`);
+                    values.push(...value.values);
+                }
+            }
+
+            sql.push(columns.join(', '));
+        }
+
+        if (Array.isArray(query.from))
+            sql.push(`${query.from[0]} AS ${query.from[1]}`);
+        else
+            sql.push(query.from);
+
+        //TODO joins
+        //TODO where
+        //TODO having
+
+        if (query.groupBy)
+            if (Array.isArray(query.groupBy))
+                sql.push(`GROUP BY ${query.groupBy.join(', ')}`);
+            else
+                sql.push(`GROUP BY ${query.groupBy}`);
+
+        if (query.orderBy)
+            sql.push(`ORDER BY ${this.handleOrderBy(query.orderBy)}`);
+
+        if (query.limit) {
+            sql.push('LIMIT = ?');
+            values.push(query.limit);
+        }
+
+        if (query.offset) {
+            sql.push('OFFSET = ?');
+            values.push(query.offset);
+        }
+
+        this.sql = sql.join(' ');
+        this.values = values;
     }
 
     private handleUpdate(query: UpdateQuery): void {
