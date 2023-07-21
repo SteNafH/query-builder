@@ -299,16 +299,16 @@ class Query implements QueryType {
             sql.push(`ORDER BY ${this.handleOrderBy(query.orderBy)}`);
 
         if (query.limit) {
-            sql.push('LIMIT = ?');
+            sql.push('LIMIT ?');
             values.push(query.limit);
         }
 
         if (query.offset) {
-            sql.push('OFFSET = ?');
+            sql.push('OFFSET ?');
             values.push(query.offset);
         }
 
-        this.sql = sql.join(' ');
+        this.sql = `${sql.join(' ')};`;
         this.values = values;
     }
 
@@ -389,11 +389,11 @@ class Query implements QueryType {
             sql.push(`ORDER BY ${this.handleOrderBy(query.orderBy)}`);
 
         if (query.limit) {
-            sql.push('LIMIT = ?');
+            sql.push('LIMIT ?');
             values.push(query.limit);
         }
 
-        this.sql = sql.join(' ');
+        this.sql = `${sql.join(' ')};`
         this.values = values;
     }
 
@@ -468,7 +468,7 @@ class Query implements QueryType {
             values.push(...set.values);
         }
 
-        this.sql = sql.join(' ');
+        this.sql = `${sql.join(' ')};`
         this.values = values;
     }
 
@@ -554,11 +554,11 @@ class Query implements QueryType {
             sql.push(`ORDER BY ${this.handleOrderBy(query.orderBy)}`);
 
         if (query.limit) {
-            sql.push('LIMIT = ?');
+            sql.push('LIMIT ?');
             values.push(query.limit);
         }
 
-        this.sql = sql.join(' ');
+        this.sql = `${sql.join(' ')};`
         this.values = values;
     }
 
