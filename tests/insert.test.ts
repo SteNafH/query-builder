@@ -47,14 +47,14 @@ describe('INSERT Query', () => {
                 from: 'applicants',
                 where: {
                     conditions: {
-                        interview_passed: 1
+                        interview_passed: null
                     }
                 }
             })
         });
 
-        expect(sql).toEqual('INSERT INTO employees (name, age, department, salary) SELECT full_name, age, department, monthly_salary FROM applicants WHERE interview_passed = ?;');
-        expect(values).toEqual([1]);
+        expect(sql).toEqual('INSERT INTO employees (name, age, department, salary) SELECT full_name, age, department, monthly_salary FROM applicants WHERE interview_passed IS NULL;');
+        expect(values).toEqual([]);
     });
 
     test('INSERT using multiple subqueries', () => {

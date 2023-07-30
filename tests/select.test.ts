@@ -190,13 +190,32 @@ describe('SELECT Query', () => {
                     age: {
                         value: 30,
                         operator: '>'
-                    }
-                }
+                    },
+                    name: 'Stefan'
+                },
+                operators: ['OR', 'AND']
             }
         });
 
-        expect(sql).toEqual('SELECT name, department FROM employees WHERE department = ? AND age > ?;');
-        expect(values).toEqual(['HR', 30]);
+        expect(sql).toEqual('SELECT name, department FROM employees WHERE department = ? OR age > ? AND name = ?;');
+        expect(values).toEqual(['HR', 30, 'Stefan']);
+    });
+
+    test('SELECT with multiple conditions using logical operators', () => {
+        const {sql, values} = new Query({
+            select: ['name', 'department'],
+            from: 'employees',
+            where: {
+                conditions: {
+                    department: 'HR',
+                    name: 'Stefan'
+                },
+                operators: 'OR'
+            }
+        });
+
+        expect(sql).toEqual('SELECT name, department FROM employees WHERE department = ? OR name = ?;');
+        expect(values).toEqual(['HR', 'Stefan']);
     });
 
     test('SELECT with LIMIT', () => {
