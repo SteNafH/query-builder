@@ -55,7 +55,6 @@ interface SelectQuery extends BaseQuery {
     fullJoin?: Join | Join[];
     crossJoin?: Join | Join[];
     where?: Conditions;
-    having?: Conditions;
     groupBy?: string | string[];
     orderBy?: string | OrderBy | (string | OrderBy)[];
     limit?: number;
@@ -305,7 +304,7 @@ class Query implements QueryType {
                 else if (typeof value === 'string')
                     columns.push(`${value} AS ${column}`);
                 else {
-                    columns.push(`(${value.sql})`);
+                    columns.push(`(${value.sql.slice(0, -1)}) AS ${column}`);
                     values.push(...value.values);
                 }
             }
@@ -372,12 +371,6 @@ class Query implements QueryType {
             const where = this.handleConditions(query.where);
             sql.push(`WHERE ${where.sql}`);
             values.push(...where.values);
-        }
-
-        if (query.having) {
-            const having = this.handleConditions(query.having);
-            sql.push(`HAVING ${having.sql}`);
-            values.push(...having.values);
         }
 
         if (query.groupBy)
