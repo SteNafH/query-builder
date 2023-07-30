@@ -15,16 +15,16 @@ type ConditionOperator =
     | '<'
     | '>='
     | '<='
-    | 'BETWEEN'
-    | 'NOT BETWEEN'
     | 'LIKE'
     | 'NOT LIKE'
     | 'IN'
-    | 'NOT IN';
+    | 'NOT IN'
+    | 'IS'
+    | 'IS NOT';
 
 interface Condition {
     value: ConditionValue;
-    operator?: ConditionOperator | ConditionOperator[];
+    operator?: ConditionOperator;
 }
 
 type ConditionsOperator = 'AND' | 'OR';
@@ -157,16 +157,117 @@ class Query implements QueryType {
         }
 
         if (join.on) {
-            const on = this.handleConditions(join.on);
-            sql.push(on.sql);
+            const on = this.handleConditions(join.on, true);
+            sql.push(`ON ${on.sql}`);
             values.push(...on.values);
         }
 
         return {sql: sql.join(' '), values: values};
     }
 
-    private handleConditions(conditions: Conditions): QueryType {
-        throw new Error('Not Implemented');
+    private* handleOperator(operators?: ConditionsOperator | ConditionsOperator[]): Generator<ConditionsOperator> {
+        let i = 0;
+
+        while (true) {
+            if (!operators)
+                yield 'AND';
+            else if (typeof operators === 'string')
+                yield operators;
+            else {
+                yield operators[i];
+
+                if (i === operators.length - 1)
+                    i = 0;
+                else
+                    i++;
+            }
+        }
+    }
+
+    private handleConditions(conditions: Conditions, isJoin: boolean = false): QueryType {
+        const sql: string[] = [];
+        const values: (any | any[])[] = [];
+        const operator = this.handleOperator(conditions.operators);
+        const entries = Object.entries(conditions.conditions);
+
+        entries.forEach(([col, value], index) => {
+
+            if (Array.isArray(value)) {
+                const conditionSql: string[] = [];
+                const conditionValues: (any | any[])[] = [];
+
+                value.forEach((condition, index) => {
+                    const query = this.handleCondition(col, condition, isJoin);
+                    conditionSql.push(query.sql);
+                    conditionValues.push(...query.values);
+
+                    if (index !== value.length - 1)
+                        conditionSql.push(operator.next().value);
+                });
+
+                sql.push(conditionSql.join(' '));
+                values.push(...conditionValues);
+            } else {
+                const query = this.handleCondition(col, value, isJoin);
+                sql.push(query.sql);
+                values.push(...query.values);
+            }
+
+            if (index !== entries.length - 1)
+                sql.push(operator.next().value);
+        });
+
+        return {sql: sql.join(' '), values: values};
+    }
+
+    private handleCondition(col: string, value: ConditionValue | Condition, isJoin: boolean): QueryType {
+        if (this.isConditionValue(value)) {
+            const query = this.handleConditionValue(col, value, isJoin);
+            return {sql: query.sql, values: query.values};
+        }
+
+        const query = this.handleConditionValue(col, value.value, isJoin, value.operator);
+        return {sql: query.sql, values: query.values};
+    }
+
+    private handleConditionValue(col: string, value: ConditionValue, isJoin: boolean, operator?: ConditionOperator | ConditionOperator[]): QueryType {
+        if (value === null)
+            return {sql: `${col} ${operator ?? 'IS'} NULL`, values: []};
+
+        if (value instanceof Query)
+            return {sql: `${col} ${operator ?? '='} (${value.sql.slice(0, -1)})`, values: value.values};
+
+        if (!Array.isArray(value))
+            if (!isJoin)
+                return {sql: `${col} ${operator ?? '='} ?`, values: [value]};
+            else
+                return {sql: `${col} = ${value}`, values: []};
+
+        const sql: string[] = [];
+        const values: (any | any[])[] = [];
+
+        for (const v of value) {
+            const query = this.handleValue(v);
+            sql.push(query.sql);
+            values.push(...query.values);
+        }
+
+        return {sql: `${col} ${operator ?? 'IN'} (${sql.join(', ')})`, values: values};
+    }
+
+    private isConditionValue(value: ConditionValue | Condition | (ConditionValue | Condition)[]): value is ConditionValue {
+        return typeof value !== 'object' || value === null || value instanceof Query || (Array.isArray(value) && this.isConditionValue(value[0]));
+    }
+
+    private handleValue(value: Value): QueryType {
+        if (value instanceof Query)
+            return {sql: `(${value.sql.slice(0, -1)})`, values: value.values};
+
+        return {sql: '?', values: [value]};
+    }
+
+    private isValues(values: Value[] | Value[][]): values is Value[][] {
+        return Array.isArray(values) && Array.isArray(values.at(0));
     }
 
     private handleSet(set: Record<string, Value>): QueryType {
@@ -174,19 +275,12 @@ class Query implements QueryType {
         const values: (any | any[])[] = [];
 
         for (const col in set) {
-            const value = this.handleValue(set[col]);
-            sql.push(`${col} = ${value.sql}`);
-            values.push(...value.values);
+            const query = this.handleValue(set[col]);
+            sql.push(`${col} = ${query.sql}`);
+            values.push(...query.values);
         }
 
         return {sql: sql.join(', '), values: values};
-    }
-
-    private handleValue(value: Value): QueryType {
-        if (value instanceof Query)
-            return {sql: `(${value.sql})`, values: value.values};
-
-        return {sql: '?', values: [value]};
     }
 
     private handleSelect(query: SelectQuery): void {
@@ -281,6 +375,7 @@ class Query implements QueryType {
         if (query.where) {
             const where = this.handleConditions(query.where);
             sql.push(`WHERE ${where.sql}`);
+            values.push(...where.values);
         }
 
         if (query.having) {
@@ -383,6 +478,7 @@ class Query implements QueryType {
         if (query.where) {
             const where = this.handleConditions(query.where);
             sql.push(`WHERE ${where.sql}`);
+            values.push(...where.values);
         }
 
         if (query.orderBy)
@@ -417,7 +513,7 @@ class Query implements QueryType {
 
         const select = query.select;
         if (select instanceof Query) {
-            sql.push(select.sql);
+            sql.push(select.sql.slice(0, -1));
             values.push(...select.values);
         } else if (Array.isArray(select)) {
             const selectSql: string[] = [];
@@ -470,10 +566,6 @@ class Query implements QueryType {
 
         this.sql = `${sql.join(' ')};`
         this.values = values;
-    }
-
-    private isValues(values: Value[] | Value[][]): values is Value[][] {
-        return Array.isArray(values) && Array.isArray(values.at(0));
     }
 
     private handleDelete(query: DeleteQuery): void {
@@ -548,6 +640,7 @@ class Query implements QueryType {
         if (query.where) {
             const where = this.handleConditions(query.where);
             sql.push(`WHERE ${where.sql}`);
+            values.push(...where.values)
         }
 
         if (query.orderBy)

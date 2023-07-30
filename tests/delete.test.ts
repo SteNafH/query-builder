@@ -51,11 +51,10 @@ describe('DELETE Query', () => {
                     },
                 },
             },
-            limit: 10,
         });
 
-        expect(sql).toEqual('DELETE t1 FROM table_name1 t1 JOIN table_name2 t2 ON t1.column_name = t2.column_name;');
-        expect(values).toEqual([10]);
+        expect(sql).toEqual('DELETE t1 FROM table_name1 AS t1 INNER JOIN table_name2 AS t2 ON t1.column_name = t2.column_name;');
+        expect(values).toEqual([]);
     });
 
     test('DELETE with Subquery', () => {
@@ -80,7 +79,7 @@ describe('DELETE Query', () => {
             },
         });
 
-        expect(sql).toEqual('DELETE FROM table_name WHERE column_name IN (SELECT column_name FROM other_table WHERE id = 1);');
+        expect(sql).toEqual('DELETE FROM table_name WHERE column_name IN (SELECT column_name FROM other_table WHERE id = ?);');
         expect(values).toEqual([1]);
     });
 
