@@ -34,15 +34,21 @@ const query = new Query({
     from: "users",
     where: {
         conditions: {
-            age: {value: 30, operator: ">"},
+            age: {
+                value: 30,
+                operator: ">"
+            },
             country: "USA",
         },
     },
-    orderBy: {by: "age", order: "DESC"},
+    orderBy: {
+        by: "age", 
+        order: "DESC"
+    },
     limit: 10,
 });
 
-console.log(query.sql); // Output: SELECT name, age FROM users WHERE age > ? AND country = ? ORDER BY age DESC LIMIT ?
+console.log(query.sql); // Output: SELECT name, age FROM users WHERE age > ? AND country = ? ORDER BY age DESC LIMIT ?;
 console.log(query.values); // Output: [30, "USA"]
 ```
 
@@ -51,17 +57,22 @@ console.log(query.values); // Output: [30, "USA"]
 ```typescript
 const query = new Query({
     update: "users",
-    set: {status: "active"},
+    set: {
+        status: "active"
+    },
     where: {
         conditions: {
-            age: {value: 18, operator: ">="},
+            age: {
+                value: 18, 
+                operator: ">="
+            },
             country: ["USA", "Canada"],
         },
     },
     limit: 100,
 });
 
-console.log(query.sql); // Output: UPDATE users SET status = ? WHERE age >= ? AND country IN (?, ?) LIMIT ?
+console.log(query.sql); // Output: UPDATE users SET status = ? WHERE age >= ? AND country IN (?, ?) LIMIT ?;
 console.log(query.values); // Output: ["active", 18, "USA", "Canada", 100]
 ```
 
@@ -69,11 +80,17 @@ console.log(query.values); // Output: ["active", 18, "USA", "Canada", 100]
 
 ```typescript
 const query = new Query({
-    insert: {table: "users", columns: ["name", "email"]},
-    values: [["John Doe", "john@example.com"], ["Jane Smith", "jane@example.com"]],
+    insert: {
+        table: "users", 
+        columns: ["name", "email"]
+    },
+    values: [
+        ["John Doe", "john@example.com"], 
+        ["Jane Smith", "jane@example.com"]
+    ],
 });
 
-console.log(query.sql); // Output: INSERT INTO users (name, email) VALUES (?, ?), (?, ?)
+console.log(query.sql); // Output: INSERT INTO users (name, email) VALUES (?, ?), (?, ?);
 console.log(query.values); // Output: ["John Doe", "john@example.com", "Jane Smith", "jane@example.com"]
 ```
 
@@ -81,14 +98,19 @@ console.log(query.values); // Output: ["John Doe", "john@example.com", "Jane Smi
 
 ```typescript
 const query = new Query({
-    delete: "users",
+    delete: true,
     from: "customers",
     where: {
-        conditions: {"users.id": {value: 42, operator: ">"}},
+        conditions: {
+            "id": {
+                value: 42, 
+                operator: ">"
+            }
+        },
     },
 });
 
-console.log(query.sql); // Output: DELETE users FROM customers WHERE users.id > ?
+console.log(query.sql); // Output: DELETE FROM customers WHERE id > ?;
 console.log(query.values); // Output: [42]
 ```
 
