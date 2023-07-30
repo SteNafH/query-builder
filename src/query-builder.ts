@@ -42,7 +42,7 @@ interface OrderBy {
 }
 
 interface BaseQuery {
-    explain?: string;
+    explain?: boolean;
 }
 
 interface SelectQuery extends BaseQuery {
@@ -413,13 +413,9 @@ class Query implements QueryType {
         sql.push('UPDATE');
 
         if (Array.isArray(query.update))
-            sql.push(query.update.join(', '));
+            sql.push(query.update.join(' AS '));
         else
             sql.push(query.update);
-
-        const set = this.handleSet(query.set);
-        sql.push(`SET ${set.sql}`);
-        values.push(...set.values);
 
         if (query.innerJoin) {
             const innerJoins = Array.isArray(query.innerJoin) ? query.innerJoin : [query.innerJoin];
@@ -451,16 +447,6 @@ class Query implements QueryType {
             }
         }
 
-        if (query.fullJoin) {
-            const fullJoins = Array.isArray(query.fullJoin) ? query.fullJoin : [query.fullJoin];
-
-            for (const fullJoin of fullJoins) {
-                const join = this.handleJoin(fullJoin);
-                sql.push(`FULL JOIN ${join.sql}`);
-                values.push(...join.values);
-            }
-        }
-
         if (query.crossJoin) {
             const crossJoins = Array.isArray(query.crossJoin) ? query.crossJoin : [query.crossJoin];
 
@@ -470,6 +456,10 @@ class Query implements QueryType {
                 values.push(...join.values);
             }
         }
+
+        const set = this.handleSet(query.set);
+        sql.push(`SET ${set.sql}`);
+        values.push(...set.values);
 
         if (query.where) {
             const where = this.handleConditions(query.where);
@@ -521,7 +511,7 @@ class Query implements QueryType {
             const selectValues: (any | any[])[] = [];
 
             for (const query of select) {
-                selectSql.push(query.sql);
+                selectSql.push(query.sql.slice(0, -1));
                 selectValues.push(...query.values);
             }
 
