@@ -1,9 +1,5 @@
 import {InvalidQueryException} from "./query-exception";
 
-//TODO -> CASE WHEN...
-//TODO -> SELECT WITH VALUES
-//TODO -> Functions
-
 type Value = string | number | boolean | null | Query;
 
 type ConditionValue = Value | (string | number | boolean | Query)[];
@@ -85,7 +81,7 @@ interface Insert {
 }
 
 interface InsertQuery extends BaseQuery {
-    insert: Insert;
+    insert: string | Insert;
     ignore?: boolean;
     select?: Query | Query[];
     values?: Value[] | Value[][];
@@ -506,10 +502,15 @@ class Query implements QueryType {
             sql.push('IGNORE');
 
         sql.push('INTO');
-        sql.push(query.insert.table);
 
-        if (query.insert.columns)
-            sql.push(`(${query.insert.columns.join(', ')})`);
+        if (typeof query.insert === 'string')
+            sql.push(query.insert)
+        else {
+            sql.push(query.insert.table);
+
+            if (query.insert.columns)
+                sql.push(`(${query.insert.columns.join(', ')})`);
+        }
 
         const select = query.select;
         if (select instanceof Query) {
@@ -531,6 +532,10 @@ class Query implements QueryType {
         const insertValues = query.values;
         if (insertValues === undefined) {
         } else if (this.isValues(insertValues)) {
+            sql.push('VALUES');
+            const valuesSql: string[] = [];
+            const valuesValues: (any | any[])[] = [];
+
             for (const row of insertValues) {
                 const rowSql: string[] = [];
                 const rowValues: (any | any[])[] = [];
@@ -540,10 +545,11 @@ class Query implements QueryType {
                     rowSql.push(value.sql);
                     rowValues.push(...value.values);
                 }
-
-                sql.push(`(${rowSql.join(', ')})`);
-                values.push(...rowValues);
+                valuesSql.push(`(${rowSql.join(', ')})`);
+                valuesValues.push(...rowValues);
             }
+            sql.push(valuesSql.join(', '));
+            values.push(...valuesValues);
         } else {
             const rowSql: string[] = [];
             const rowValues: (any | any[])[] = [];
@@ -554,7 +560,7 @@ class Query implements QueryType {
                 rowValues.push(...value.values);
             }
 
-            sql.push(`(${rowSql.join(', ')})`);
+            sql.push(`VALUES (${rowSql.join(', ')})`);
             values.push(...rowValues);
         }
 
